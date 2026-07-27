@@ -10,6 +10,13 @@ from queuectl import queue_ops
 from queuectl import worker as worker_module
 
 
+def _emit_json(payload) -> None:
+    """Write JSON to stdout only (no extra output)."""
+    sys.stdout.write(json.dumps(payload))
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+
 @click.group()
 def main():
     """QueueCTL — a SQLite-backed job queue with worker processes."""
@@ -22,7 +29,7 @@ def enqueue(job_json):
     """Enqueue a new job from JSON."""
     try:
         job = queue_ops.enqueue_job(job_json)
-        click.echo(json.dumps(job.to_dict()))
+        _emit_json(job.to_dict())
     except (json.JSONDecodeError, KeyError, ValueError) as exc:
         click.echo(f"Error: {exc}", err=True)
         sys.exit(1)
@@ -78,8 +85,7 @@ def list_jobs(state, as_json):
         sys.exit(1)
 
     if as_json:
-        payload = [job.to_dict() for job in jobs]
-        click.echo(json.dumps(payload))
+        _emit_json([job.to_dict() for job in jobs])
     else:
         if not jobs:
             click.echo(f"No jobs in state '{state}'.")
@@ -99,7 +105,7 @@ def dlq_list(as_json):
     """List jobs in the dead letter queue."""
     jobs = queue_ops.list_dlq_jobs()
     if as_json:
-        click.echo(json.dumps([job.to_dict() for job in jobs]))
+        _emit_json([job.to_dict() for job in jobs])
     else:
         if not jobs:
             click.echo("No jobs in the dead letter queue.")
@@ -113,7 +119,7 @@ def dlq_retry(job_id):
     """Re-enqueue a dead job for retry."""
     try:
         job = queue_ops.dlq_retry_job(job_id)
-        click.echo(json.dumps(job.to_dict()))
+        _emit_json(job.to_dict())
     except ValueError as exc:
         click.echo(f"Error: {exc}", err=True)
         sys.exit(1)
