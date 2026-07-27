@@ -13,6 +13,7 @@ from queuectl.db import get_connection, init_db, row_to_dict
 from queuectl.models import (
     ALL_STATES,
     STATE_COMPLETED,
+    STATE_DEAD,
     STATE_FAILED,
     STATE_PENDING,
     STATE_PROCESSING,
@@ -147,19 +148,36 @@ def complete_job(job_id: str) -> None:
 
 
 def fail_job(job_id: str, error: str | None = None) -> None:
-    """Mark a job as failed (Phase 3: no backoff math yet)."""
-    now = utc_now_iso()
+    """Mark a job failed with exponential backoff, or dead if retries exhausted."""
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.isoformat()
+
     init_db()
     conn = get_connection()
     try:
+        row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        if row is None:
+            return
+
+        job = Job.from_row(row_to_dict(row))
+        attempts = job.attempts + 1
+
+        if attempts >= job.max_retries:
+            state = STATE_DEAD
+            next_retry_at = None
+        else:
+            state = STATE_FAILED
+            delay_seconds = job.backoff_base ** attempts
+            next_retry_at = (now_dt + timedelta(seconds=delay_seconds)).isoformat()
+
         conn.execute(
             """
             UPDATE jobs
-            SET state = ?, updated_at = ?, worker_pid = NULL,
-                lease_expires_at = NULL, last_error = ?
+            SET state = ?, attempts = ?, updated_at = ?, worker_pid = NULL,
+                lease_expires_at = NULL, last_error = ?, next_retry_at = ?
             WHERE id = ?
             """,
-            (STATE_FAILED, now, error, job_id),
+            (state, attempts, now, error, next_retry_at, job_id),
         )
         conn.commit()
     finally:
