@@ -48,7 +48,11 @@ def worker_start(count):
 @worker.command("stop")
 def worker_stop():
     """Stop all running workers gracefully."""
-    pass
+    stopped = worker_module.stop_all_workers()
+    if stopped:
+        click.echo(f"Sent SIGTERM to worker(s): {', '.join(str(p) for p in stopped)}")
+    else:
+        click.echo("No running workers found.")
 
 
 @main.command()

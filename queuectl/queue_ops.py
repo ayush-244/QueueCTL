@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from queuectl import pidfiles
 from queuectl.config import get_backoff_base, get_max_retries
 from queuectl.db import get_connection, init_db, row_to_dict
 from queuectl.models import (
@@ -274,5 +275,4 @@ def get_job_counts() -> dict[str, int]:
 
 
 def get_live_worker_count() -> int:
-    """Stub for Phase 2 — returns 0 until PID files are implemented."""
-    return 0
+    return pidfiles.count_live_workers()
