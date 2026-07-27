@@ -170,7 +170,10 @@ queuectl/
   pidfiles.py     # worker PID / stop files
 tests/            # subprocess-driven test suite
 DECISIONS.md      # design rationale (required for grading)
+PROJECT_GUIDE.md  # full project guide — every file + manual testing
 ```
+
+> **For a complete explanation of every file and step-by-step manual testing commands, see [PROJECT_GUIDE.md](PROJECT_GUIDE.md).**
 
 ## License
 
