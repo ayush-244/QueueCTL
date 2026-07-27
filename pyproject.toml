@@ -15,6 +15,9 @@ dependencies = [
 [project.scripts]
 queuectl = "queuectl.cli:main"
 
+[project.optional-dependencies]
+dev = []
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["queuectl*"]

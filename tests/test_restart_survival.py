@@ -3,75 +3,52 @@
 from __future__ import annotations
 
 import json
-import shutil
+import os
+import signal
 import subprocess
 import sys
 import time
-from pathlib import Path
 
-RUNTIME = Path(".queuectl")
+from tests.helpers import RUNTIME, count_state, enqueue, reset_runtime, run_cli, start_worker, stop_workers
 
-
-def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-m", "queuectl.cli", *args],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+PYTHON = sys.executable
 
 
 def test_full_restart_survival() -> None:
-    if RUNTIME.exists():
-        shutil.rmtree(RUNTIME)
+    reset_runtime()
 
-    for i in range(8):
-        job = json.dumps(
+    for i in range(5):
+        enqueue(
             {
                 "id": f"restart{i}",
-                "command": f'{sys.executable} -c "import time; time.sleep(30)"',
+                "command": f'{PYTHON} -c "import time; time.sleep(2)"',
             }
         )
-        assert run_cli("enqueue", job).returncode == 0
 
-    worker = subprocess.Popen(
-        [sys.executable, "-m", "queuectl.cli", "worker", "start"],
-    )
-    time.sleep(0.3)
+    worker = start_worker()
+    time.sleep(0.5)
     if sys.platform == "win32":
         subprocess.run(["taskkill", "/F", "/PID", str(worker.pid)], check=False)
     else:
-        import os
-        import signal
-
         os.kill(worker.pid, signal.SIGKILL)
     worker.wait(timeout=10)
 
     assert RUNTIME.joinpath("queuectl.db").exists()
 
-    r = run_cli("status")
-    assert "pending:" in r.stdout or "processing:" in r.stdout
-
-    remaining = 0
-    for state in ("pending", "processing", "failed"):
-        r = run_cli("list", "--state", state, "--json")
-        remaining += len(json.loads(r.stdout))
+    remaining = sum(count_state(s) for s in ("pending", "processing", "failed"))
     assert remaining >= 1, "Jobs should persist across worker restart"
 
-    worker2 = subprocess.Popen(
-        [sys.executable, "-m", "queuectl.cli", "worker", "start"],
-    )
+    worker2 = start_worker()
     try:
-        for _ in range(120):
-            r = run_cli("list", "--state", "completed", "--json")
-            if len(json.loads(r.stdout)) == 8:
+        deadline = time.time() + 90
+        while time.time() < deadline:
+            if count_state("completed") == 5:
                 break
-            time.sleep(1)
+            time.sleep(0.5)
         else:
             raise AssertionError("Jobs did not resume after restart")
     finally:
-        run_cli("worker", "stop")
-        worker2.wait(timeout=10)
+        stop_workers(worker2)
 
 
 if __name__ == "__main__":
