@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "queuectl"
+version = "0.1.0"
+description = "A SQLite-backed job queue with worker processes"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.0",
+]
+
+[project.scripts]
+queuectl = "queuectl.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["queuectl*"]

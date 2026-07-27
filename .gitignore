@@ -1,0 +1,12 @@
+.queuectl/
+__pycache__/
+*.py[cod]
+*.db
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+*.log
+.venv/
+venv/
