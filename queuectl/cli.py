@@ -1,6 +1,12 @@
 """Click CLI entrypoint for queuectl."""
 
+import json
+import sys
+
 import click
+
+from queuectl import config as config_module
+from queuectl import queue_ops
 
 
 @click.group()
@@ -13,7 +19,12 @@ def main():
 @click.argument("job_json")
 def enqueue(job_json):
     """Enqueue a new job from JSON."""
-    pass
+    try:
+        job = queue_ops.enqueue_job(job_json)
+        click.echo(json.dumps(job.to_dict()))
+    except (json.JSONDecodeError, KeyError, ValueError) as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
 
 
 @main.group()
@@ -38,7 +49,12 @@ def worker_stop():
 @main.command()
 def status():
     """Show job counts per state and live worker count."""
-    pass
+    counts = queue_ops.get_job_counts()
+    workers = queue_ops.get_live_worker_count()
+    click.echo("Job counts:")
+    for state, count in counts.items():
+        click.echo(f"  {state}: {count}")
+    click.echo(f"Live workers: {workers}")
 
 
 @main.command("list")
@@ -46,7 +62,20 @@ def status():
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON array.")
 def list_jobs(state, as_json):
     """List jobs filtered by state."""
-    pass
+    try:
+        jobs = queue_ops.list_jobs_by_state(state)
+    except ValueError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+
+    if as_json:
+        payload = [job.to_dict() for job in jobs]
+        click.echo(json.dumps(payload))
+    else:
+        if not jobs:
+            click.echo(f"No jobs in state '{state}'.")
+        for job in jobs:
+            click.echo(f"{job.id}  {job.state}  {job.command}")
 
 
 @main.group("dlq")
@@ -80,7 +109,12 @@ def config():
 @click.argument("value")
 def config_set(key, value):
     """Set a configuration value."""
-    pass
+    try:
+        config_module.set_config(key, value)
+        click.echo(f"Set {key} = {value}")
+    except ValueError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
