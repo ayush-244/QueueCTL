@@ -153,7 +153,9 @@ Scenarios covered:
 
 ## Demo recording
 
-[Demo video link — replace before submission](https://example.com/queuectl-demo)
+**[QueueCTL CLI demo](https://example.com/queuectl-demo)** — replace this URL with your uploaded screen recording before final submission.
+
+The demo shows: enqueue (including a failing job), multi-worker execution, `status`/`list` output, SIGKILL recovery, `worker stop`, and DLQ retry.
 
 ## Project layout
 
