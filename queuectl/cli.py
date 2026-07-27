@@ -93,14 +93,26 @@ def dlq():
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON array.")
 def dlq_list(as_json):
     """List jobs in the dead letter queue."""
-    pass
+    jobs = queue_ops.list_dlq_jobs()
+    if as_json:
+        click.echo(json.dumps([job.to_dict() for job in jobs]))
+    else:
+        if not jobs:
+            click.echo("No jobs in the dead letter queue.")
+        for job in jobs:
+            click.echo(f"{job.id}  {job.command}  attempts={job.attempts}")
 
 
 @dlq.command("retry")
 @click.argument("job_id")
 def dlq_retry(job_id):
     """Re-enqueue a dead job for retry."""
-    pass
+    try:
+        job = queue_ops.dlq_retry_job(job_id)
+        click.echo(json.dumps(job.to_dict()))
+    except ValueError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
 
 
 @main.group()

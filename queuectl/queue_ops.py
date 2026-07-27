@@ -208,6 +208,36 @@ def renew_lease(job_id: str, pid: int | None = None) -> None:
         conn.close()
 
 
+def dlq_retry_job(job_id: str) -> Job:
+    """Re-enqueue a dead job with a fresh retry budget."""
+    init_db()
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT * FROM jobs WHERE id = ? AND state = ?", (job_id, STATE_DEAD)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Job '{job_id}' not found in dead letter queue")
+
+        now = utc_now_iso()
+        conn.execute(
+            """
+            UPDATE jobs
+            SET state = ?, attempts = 0, updated_at = ?,
+                next_retry_at = NULL, last_error = NULL,
+                worker_pid = NULL, lease_expires_at = NULL
+            WHERE id = ?
+            """,
+            (STATE_PENDING, now, job_id),
+        )
+        conn.commit()
+
+        updated = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        return Job.from_row(row_to_dict(updated))
+    finally:
+        conn.close()
+
+
 def list_jobs_by_state(state: str) -> list[Job]:
     if state not in ALL_STATES:
         raise ValueError(f"Invalid state: {state}")
@@ -222,6 +252,10 @@ def list_jobs_by_state(state: str) -> list[Job]:
         return [Job.from_row(row_to_dict(row)) for row in rows]
     finally:
         conn.close()
+
+
+def list_dlq_jobs() -> list[Job]:
+    return list_jobs_by_state(STATE_DEAD)
 
 
 def get_job_counts() -> dict[str, int]:
