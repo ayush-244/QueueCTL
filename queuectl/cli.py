@@ -7,6 +7,7 @@ import click
 
 from queuectl import config as config_module
 from queuectl import queue_ops
+from queuectl import worker as worker_module
 
 
 @click.group()
@@ -37,7 +38,11 @@ def worker():
 @click.option("--count", default=1, help="Number of worker processes to spawn.")
 def worker_start(count):
     """Start worker process(es) in the foreground."""
-    pass
+    try:
+        worker_module.start_workers(count)
+    except NotImplementedError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
 
 
 @worker.command("stop")
