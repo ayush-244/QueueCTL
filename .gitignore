@@ -10,3 +10,10 @@ build/
 *.log
 .venv/
 venv/
+
+# Dev/scratch files
+dry_run.py
+PROJECT_GUIDE.md
+
+# README pushed separately after demo recording link is added
+README.md
