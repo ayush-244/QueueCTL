@@ -52,6 +52,17 @@ def get_backoff_base() -> float:
     return float(_get_config_value(CONFIG_BACKOFF_BASE, str(DEFAULT_BACKOFF_BASE)))
 
 
+def get_config(cli_key: str) -> str:
+    if cli_key not in CONFIG_KEYS:
+        raise ValueError(f"Unknown config key: {cli_key}")
+    db_key = CONFIG_KEYS[cli_key]
+    if cli_key == "max-retries":
+        return str(get_max_retries())
+    elif cli_key == "backoff-base":
+        return str(get_backoff_base())
+    return _get_config_value(db_key, "")
+
+
 def set_config(cli_key: str, value: str) -> None:
     if cli_key not in CONFIG_KEYS:
         raise ValueError(f"Unknown config key: {cli_key}")

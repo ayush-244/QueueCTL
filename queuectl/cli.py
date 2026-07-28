@@ -6,6 +6,7 @@ import sys
 import click
 
 from queuectl import config as config_module
+from queuectl.config import CONFIG_KEYS
 from queuectl import queue_ops
 from queuectl import worker as worker_module
 
@@ -139,6 +140,18 @@ def config_set(key, value):
     try:
         config_module.set_config(key, value)
         click.echo(f"Set {key} = {value}")
+    except ValueError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+
+
+@config.command("get")
+@click.argument("key", type=click.Choice(list(CONFIG_KEYS)), metavar="KEY")
+def config_get(key):
+    """Get a configuration value (shows default if not explicitly set)."""
+    try:
+        value = config_module.get_config(key)
+        click.echo(f"{key} = {value}")
     except ValueError as exc:
         click.echo(f"Error: {exc}", err=True)
         sys.exit(1)
